@@ -1,4 +1,5 @@
 import Button from '@app/components/Common/Button';
+import LabeledCheckbox from '@app/components/Common/LabeledCheckbox';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import PermissionEdit from '@app/components/PermissionEdit';
@@ -10,9 +11,10 @@ import { ArrowDownOnSquareIcon } from '@heroicons/react/24/outline';
 import { MediaServerType } from '@server/constants/server';
 import type { MainSettings } from '@server/lib/settings';
 import { Field, Form, Formik } from 'formik';
-import { useIntl } from 'react-intl';
+import { useIntl, type IntlShape } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
 import useSWR, { mutate } from 'swr';
+import * as yup from 'yup';
 
 const messages = defineMessages('components.Settings.SettingsUsers', {
   users: 'Users',
@@ -20,9 +22,15 @@ const messages = defineMessages('components.Settings.SettingsUsers', {
   userSettingsDescription: 'Configure global and default user settings.',
   toastSettingsSuccess: 'User settings saved successfully!',
   toastSettingsFailure: 'Something went wrong while saving settings.',
+  loginMethods: 'Login Methods',
+  loginMethodsTip: 'Configure login methods for users.',
   localLogin: 'Enable Local Sign-In',
   localLoginTip:
-    'Allow users to sign in using their email address and password, instead of {mediaServerName} OAuth',
+    'Allow users to sign in using their email address and password',
+  mediaServerLogin: 'Enable {mediaServerName} Sign-In',
+  mediaServerLoginTip:
+    'Allow users to sign in using their {mediaServerName} account',
+  atLeastOneAuth: 'At least one authentication method must be selected.',
   newPlexLogin: 'Enable New {mediaServerName} Sign-In',
   newPlexLoginTip:
     'Allow {mediaServerName} users to sign in without first being imported',
@@ -31,6 +39,29 @@ const messages = defineMessages('components.Settings.SettingsUsers', {
   defaultPermissions: 'Default Permissions',
   defaultPermissionsTip: 'Initial permissions assigned to new users',
 });
+
+const createValidationSchema = (intl: IntlShape) => {
+  return yup
+    .object()
+    .shape({
+      localLogin: yup.boolean(),
+      mediaServerLogin: yup.boolean(),
+    })
+    .test({
+      name: 'atLeastOneAuth',
+      test: function (values) {
+        const isValid = ['localLogin', 'mediaServerLogin'].some(
+          (field) => !!values[field]
+        );
+
+        if (isValid) return true;
+        return this.createError({
+          path: 'localLogin | mediaServerLogin',
+          message: intl.formatMessage(messages.atLeastOneAuth),
+        });
+      },
+    });
+};
 
 const SettingsUsers = () => {
   const { addToast } = useToasts();
@@ -52,6 +83,8 @@ const SettingsUsers = () => {
         ? 'Jellyfin'
         : settings.currentSettings.mediaServerType === MediaServerType.EMBY
         ? 'Emby'
+        : settings.currentSettings.mediaServerType === MediaServerType.PLEX
+        ? 'Plex'
         : undefined,
   };
 
@@ -73,6 +106,7 @@ const SettingsUsers = () => {
         <Formik
           initialValues={{
             localLogin: data?.localLogin,
+            mediaServerLogin: data?.mediaServerLogin,
             newPlexLogin: data?.newPlexLogin,
             movieQuotaLimit: data?.defaultQuotas.movie.quotaLimit ?? 0,
             movieQuotaDays: data?.defaultQuotas.movie.quotaDays ?? 7,
@@ -80,6 +114,7 @@ const SettingsUsers = () => {
             tvQuotaDays: data?.defaultQuotas.tv.quotaDays ?? 7,
             defaultPermissions: data?.defaultPermissions ?? 0,
           }}
+          validationSchema={() => createValidationSchema(intl)}
           enableReinitialize
           onSubmit={async (values) => {
             try {
@@ -90,6 +125,7 @@ const SettingsUsers = () => {
                 },
                 body: JSON.stringify({
                   localLogin: values.localLogin,
+                  mediaServerLogin: values.mediaServerLogin,
                   newPlexLogin: values.newPlexLogin,
                   defaultQuotas: {
                     movie: {
@@ -121,30 +157,61 @@ const SettingsUsers = () => {
             }
           }}
         >
-          {({ isSubmitting, values, setFieldValue }) => {
+          {({ isSubmitting, values, errors, setFieldValue }) => {
             return (
               <Form className="section">
-                <div className="form-row">
-                  <label htmlFor="localLogin" className="checkbox-label">
-                    {intl.formatMessage(messages.localLogin)}
-                    <span className="label-tip">
-                      {intl.formatMessage(
-                        messages.localLoginTip,
-                        mediaServerFormatValues
+                <div
+                  role="group"
+                  aria-labelledby="group-label"
+                  className="form-group"
+                >
+                  <div className="form-row">
+                    <span id="group-label" className="group-label">
+                      {intl.formatMessage(messages.loginMethods)}
+                      <span className="label-tip">
+                        {intl.formatMessage(messages.loginMethodsTip)}
+                      </span>
+                      {'localLogin | mediaServerLogin' in errors && (
+                        <span className="error">
+                          {errors['localLogin | mediaServerLogin'] as string}
+                        </span>
                       )}
                     </span>
-                  </label>
-                  <div className="form-input-area">
-                    <Field
-                      type="checkbox"
-                      id="localLogin"
-                      name="localLogin"
-                      onChange={() => {
-                        setFieldValue('localLogin', !values.localLogin);
-                      }}
-                    />
+
+                    <div className="form-input-area max-w-lg">
+                      <LabeledCheckbox
+                        id="localLogin"
+                        label={intl.formatMessage(messages.localLogin)}
+                        description={intl.formatMessage(
+                          messages.localLoginTip,
+                          mediaServerFormatValues
+                        )}
+                        onChange={() =>
+                          setFieldValue('localLogin', !values.localLogin)
+                        }
+                      />
+                      <LabeledCheckbox
+                        id="mediaServerLogin"
+                        className="mt-4"
+                        label={intl.formatMessage(
+                          messages.mediaServerLogin,
+                          mediaServerFormatValues
+                        )}
+                        description={intl.formatMessage(
+                          messages.mediaServerLoginTip,
+                          mediaServerFormatValues
+                        )}
+                        onChange={() =>
+                          setFieldValue(
+                            'mediaServerLogin',
+                            !values.mediaServerLogin
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
+
                 <div className="form-row">
                   <label htmlFor="newPlexLogin" className="checkbox-label">
                     {intl.formatMessage(

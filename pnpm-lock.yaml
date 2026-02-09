@@ -140,6 +140,9 @@ importers:
       nodemailer:
         specifier: 8.0.5
         version: 8.0.5
+      oauth4webapi:
+        specifier: ^3.8.5
+        version: 3.8.6
       openid-client:
         specifier: ^6.8.2
         version: 6.8.4

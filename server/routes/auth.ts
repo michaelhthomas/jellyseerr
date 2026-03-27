@@ -934,6 +934,7 @@ authRoutes.get('/oidc/login/:slug', async (req, res, next) => {
     httpOnly: true,
     secure: req.protocol === 'https',
     signed: true,
+    sameSite: 'strict',
   });
 
   const callbackUrl = getOidcRedirectUrl(req);
@@ -952,6 +953,7 @@ authRoutes.get('/oidc/login/:slug', async (req, res, next) => {
     httpOnly: true,
     secure: req.protocol === 'https',
     signed: true,
+    sameSite: 'strict',
   });
 
   let redirectUrl: URL;

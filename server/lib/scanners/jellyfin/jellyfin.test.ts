@@ -343,7 +343,7 @@ describe('Jellyfin Scanner', () => {
         return [];
       };
 
-      await runWithMockTimers(jellyfinFullScanner.run());
+      await runWithMockTimers(() => jellyfinFullScanner.run());
 
       const updated = await mediaRepository.findOneOrFail({
         where: { tmdbId: 5000 },
@@ -421,7 +421,7 @@ describe('Jellyfin Scanner', () => {
         return [];
       };
 
-      await runWithMockTimers(jellyfinFullScanner.run());
+      await runWithMockTimers(() => jellyfinFullScanner.run());
 
       const updated = await mediaRepository.findOneOrFail({
         where: { tmdbId: 5001 },
@@ -498,7 +498,7 @@ describe('Jellyfin Scanner', () => {
         return [];
       };
 
-      await runWithMockTimers(jellyfinFullScanner.run());
+      await runWithMockTimers(() => jellyfinFullScanner.run());
 
       const updated = await mediaRepository.findOneOrFail({
         where: { tmdbId: 5002 },
